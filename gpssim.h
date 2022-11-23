@@ -1,7 +1,7 @@
 #ifndef GPSSIM_H
 #define GPSSIM_H
 
-//#define FLOAT_CARR_PHASE // For RKT simulation. Higher computational load, but smoother carrier phase.
+#define FLOAT_CARR_PHASE // For RKT simulation. Higher computational load, but smoother carrier phase.
 
 #define TRUE	(1)
 #define FALSE	(0)
@@ -10,10 +10,10 @@
 #define MAX_CHAR (100)
 
 /*! \brief Maximum number of satellites in RINEX file */
-#define MAX_SAT (32)
+#define MAX_SAT (40)
 
 /*! \brief Maximum number of channels we simulate */
-#define MAX_CHAN (16)
+#define MAX_CHAN (20)
 
 /*! \brief Maximum number of user motion points */
 #ifndef USER_MOTION_SIZE

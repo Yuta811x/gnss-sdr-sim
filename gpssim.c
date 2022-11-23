@@ -1,4 +1,4 @@
-#define _CRT_SECURE_NO_DEPRECATE
+﻿#define _CRT_SECURE_NO_DEPRECATE
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -127,6 +127,7 @@ double dotProd(const double *x1, const double *x2)
 
 /* !\brief generate the C/A code sequence for a given Satellite Vehicle PRN
  *  \param[in] prn PRN number of the Satellite Vehicle
+ *  \GPS G2Delay:0 ~ 32, QZSS G2Delay:32 ~ 
  *  \param[out] ca Caller-allocated integer array of 1023 bytes
  */
 void codegen(int *ca, int prn)
@@ -135,14 +136,15 @@ void codegen(int *ca, int prn)
 		  5,   6,   7,   8,  17,  18, 139, 140, 141, 251,
 		252, 254, 255, 256, 257, 258, 469, 470, 471, 472,
 		473, 474, 509, 512, 513, 514, 515, 516, 859, 860,
-		861, 862};
-	
+		861, 862,   0, 208, 711, 663,   0,   0, 189,   0};
+
+
 	int g1[CA_SEQ_LEN], g2[CA_SEQ_LEN];
 	int r1[N_DWRD_SBF], r2[N_DWRD_SBF];
 	int c1, c2;
 	int i,j;
 
-	if (prn<1 || prn>32)
+	if (prn<1 || prn>40)
 		return;
 
 	for (i=0; i<N_DWRD_SBF; i++)
@@ -166,7 +168,9 @@ void codegen(int *ca, int prn)
 
 	for (i=0,j=CA_SEQ_LEN-delay[prn-1]; i<CA_SEQ_LEN; i++,j++)
 		ca[i] = (1-g1[i]*g2[j%CA_SEQ_LEN])/2;
-	
+
+	//printf("%d %d\n",prn,delay[prn-1]);
+
 	return;
 }
 
@@ -619,27 +623,30 @@ void eph2sbf(const ephem_t eph, const ionoutc_t ionoutc, unsigned long sbf[5][N_
 	sbf[2][8] = (omgdot&0xFFFFFFUL)<<6;
 	sbf[2][9] = ((iode&0xFFUL)<<22) | ((idot&0x3FFFUL)<<8);
 
-	if (ionoutc.vflg==TRUE)
+	//Due to the difference between GPS and QZSS specifications
+	//the almanac data part, which is a simplified version of ephemeris data
+	//is set to all 0s.
+	if (ionoutc.vflg == TRUE)
 	{
-		// Subframe 4, page 18
-		sbf[3][0] = 0x8B0000UL<<6;
-		sbf[3][1] = 0x4UL<<8;
-		sbf[3][2] = (dataId<<28) | (sbf4_page18_svId<<22) | ((alpha0&0xFFUL)<<14) | ((alpha1&0xFFUL)<<6);
-		sbf[3][3] = ((alpha2&0xFFUL)<<22) | ((alpha3&0xFFUL)<<14) | ((beta0&0xFFUL)<<6);
-		sbf[3][4] = ((beta1&0xFFUL)<<22) | ((beta2&0xFFUL)<<14) | ((beta3&0xFFUL)<<6);
-		sbf[3][5] = (A1&0xFFFFFFUL)<<6;
-		sbf[3][6] = ((A0>>8)&0xFFFFFFUL)<<6;
-		sbf[3][7] = ((A0&0xFFUL)<<22) | ((tot&0xFFUL)<<14) | ((wnt&0xFFUL)<<6);
-		sbf[3][8] = ((dtls&0xFFUL)<<22) | ((wnlsf&0xFFUL)<<14) | ((dn&0xFFUL)<<6);
-		sbf[3][9] = (dtlsf&0xFFUL)<<22;
-	
+		// Subframe 4, page 25
+		sbf[3][0] = 0UL;
+		sbf[3][1] = 0UL;
+		sbf[3][2] = 0UL;
+		sbf[3][3] = 0UL;
+		sbf[3][4] = 0UL;
+		sbf[3][5] = 0UL;
+		sbf[3][6] = 0UL;
+		sbf[3][7] = 0UL;
+		sbf[3][8] = 0UL;
+		sbf[3][9] = 0UL;
+
 	}
 	else
 	{
 		// Subframe 4, page 25
-		sbf[3][0] = 0x8B0000UL<<6;
-		sbf[3][1] = 0x4UL<<8;
-		sbf[3][2] = (dataId<<28) | (sbf4_page25_svId<<22);
+		sbf[3][0] = 0UL;
+		sbf[3][1] = 0UL;
+		sbf[3][2] = 0UL;
 		sbf[3][3] = 0UL;
 		sbf[3][4] = 0UL;
 		sbf[3][5] = 0UL;
@@ -650,9 +657,9 @@ void eph2sbf(const ephem_t eph, const ionoutc_t ionoutc, unsigned long sbf[5][N_
 	}
 
 	// Subframe 5, page 25
-	sbf[4][0] = 0x8B0000UL<<6;
-	sbf[4][1] = 0x5UL<<8;
-	sbf[4][2] = (dataId<<28) | (sbf5_page25_svId<<22) | ((toa&0xFFUL)<<14) | ((wna&0xFFUL)<<6);
+	sbf[4][0] = 0UL;
+	sbf[4][1] = 0UL;
+	sbf[4][2] = 0UL;
 	sbf[4][3] = 0UL;
 	sbf[4][4] = 0UL;
 	sbf[4][5] = 0UL;
@@ -810,12 +817,12 @@ gpstime_t incGpsTime(gpstime_t g0, double dt)
 	return(g1);
 }
 
-/*! \brief Read Ephemeris data from the RINEX Navigation file */
+/*! \brief Read GPS Ephemeris data from the RINEX Navigation file */
 /*  \param[out] eph Array of Output SV ephemeris data
  *  \param[in] fname File name of the RINEX file
  *  \returns Number of sets of ephemerides in the file
  */
-int readRinexNavAll(ephem_t eph[][MAX_SAT], ionoutc_t *ionoutc, const char *fname)
+int readgpsRinexNavAll(ephem_t eph[][MAX_SAT], ionoutc_t *ionoutc, const char *fname)
 {
 	FILE *fp;
 	int ieph;
@@ -834,11 +841,6 @@ int readRinexNavAll(ephem_t eph[][MAX_SAT], ionoutc_t *ionoutc, const char *fnam
 	if (NULL==(fp=fopen(fname, "rt")))
 		return(-1);
 
-	// Clear valid flag
-	for (ieph=0; ieph<EPHEM_ARRAY_SIZE; ieph++)
-		for (sv=0; sv<MAX_SAT; sv++)
-			eph[ieph][sv].vflg = 0;
-
 	// Read header lines
 	while (1)
 	{
@@ -847,9 +849,10 @@ int readRinexNavAll(ephem_t eph[][MAX_SAT], ionoutc_t *ionoutc, const char *fnam
 
 		if (strncmp(str+60, "END OF HEADER", 13)==0)
 			break;
+
 		else if (strncmp(str+60, "ION ALPHA", 9)==0)
 		{
-			strncpy(tmp, str+2, 12);
+			strncpy(tmp, str+3, 12);
 			tmp[12] = 0;
 			replaceExpDesignator(tmp, 12);
 			ionoutc->alpha0 = atof(tmp);
@@ -895,24 +898,31 @@ int readRinexNavAll(ephem_t eph[][MAX_SAT], ionoutc_t *ionoutc, const char *fnam
 
 			flags |= 0x1<<1;
 		}
+		
 		else if (strncmp(str+60, "DELTA-UTC", 9)==0)
 		{
 			strncpy(tmp, str+3, 19);
 			tmp[19] = 0;
+			printf("%s\n", tmp);
 			replaceExpDesignator(tmp, 19);
 			ionoutc->A0 = atof(tmp);
 
 			strncpy(tmp, str+22, 19);
+
 			tmp[19] = 0;
+			printf("%s\n", tmp);
 			replaceExpDesignator(tmp, 19);
 			ionoutc->A1 = atof(tmp);
 
 			strncpy(tmp, str+41, 9);
+			
 			tmp[9] = 0;
+			printf("%s\n", tmp);
 			ionoutc->tot = atoi(tmp);
 
 			strncpy(tmp, str+50, 9);
 			tmp[9] = 0;
+			printf("%s\n", tmp);
 			ionoutc->wnt = atoi(tmp);
 
 			if (ionoutc->tot%4096==0)
@@ -931,6 +941,8 @@ int readRinexNavAll(ephem_t eph[][MAX_SAT], ionoutc_t *ionoutc, const char *fnam
 	ionoutc->vflg = FALSE;
 	if (flags==0xF) // Read all Iono/UTC lines
 		ionoutc->vflg = TRUE;
+
+
 
 	// Read ephemeris blocks
 	g0.week = -1;
@@ -1167,6 +1179,371 @@ int readRinexNavAll(ephem_t eph[][MAX_SAT], ionoutc_t *ionoutc, const char *fnam
 	return(ieph);
 }
 
+/*! \brief Read QZSS Ephemeris data from the RINEX Navigation file */
+/*  \param[out] eph Array of Output SV ephemeris data
+ *  \param[in] fname File name of the RINEX file
+ *  \returns Number of sets of ephemerides in the file
+ */
+int readqzssRinexNavAll(ephem_t eph[][MAX_SAT], ionoutc_t *ionoutc, const char *fname)
+{
+	FILE *fp;
+	int ieph;
+	
+	int sv;
+	char str[MAX_CHAR];
+	char tmp[20];
+
+	datetime_t t;
+	gpstime_t g;
+	gpstime_t g0;
+	double dt;
+
+	int flags = 0x0;
+
+	if (NULL==(fp=fopen(fname, "rt")))
+		return(-1);
+
+	// Clear valid flag
+	for (ieph=0; ieph<EPHEM_ARRAY_SIZE; ieph++)
+		for (sv=0; sv<MAX_SAT; sv++)
+			eph[ieph][sv].vflg = 0;
+
+
+	// Read header lines
+	while (1)
+	{
+		if (NULL==fgets(str, MAX_CHAR, fp))
+			break;
+
+		if (strncmp(str+60, "END OF HEADER", 13)==0)
+			break;
+		else if (strncmp(str, "QZSA", 4)==0)
+		{
+			
+			strncpy(tmp, str+5, 12);
+
+			tmp[12] = 0;
+			replaceExpDesignator(tmp, 12);
+			ionoutc->alpha0 = atof(tmp);
+
+			strncpy(tmp, str+17, 12);
+			tmp[12] = 0;
+			replaceExpDesignator(tmp, 12);
+			ionoutc->alpha1 = atof(tmp);
+
+			strncpy(tmp, str+29, 12);
+			tmp[12] = 0;
+			replaceExpDesignator(tmp, 12);
+			ionoutc->alpha2 = atof(tmp);
+
+			strncpy(tmp, str+41, 12);
+			tmp[12] = 0;
+			replaceExpDesignator(tmp, 12);
+			ionoutc->alpha3 = atof(tmp);
+
+			flags |= 0x1;
+		}
+		else if (strncmp(str, "QZSB", 4)==0)
+		{
+			strncpy(tmp, str+5, 12);
+			tmp[12] = 0;
+			replaceExpDesignator(tmp, 12);
+			ionoutc->beta0 = atof(tmp);
+
+			strncpy(tmp, str+17, 12);
+			tmp[12] = 0;
+			replaceExpDesignator(tmp, 12);
+			ionoutc->beta1 = atof(tmp);
+
+			strncpy(tmp, str+29, 12);
+			tmp[12] = 0;
+			replaceExpDesignator(tmp, 12);
+			ionoutc->beta2 = atof(tmp);
+
+			strncpy(tmp, str+41, 12);
+			tmp[12] = 0;
+			replaceExpDesignator(tmp, 12);
+			ionoutc->beta3 = atof(tmp);
+
+			flags |= 0x1<<1;
+		}
+		else if (strncmp(str, "QZUT", 4)==0)
+		{	
+
+			strncpy(tmp, str+4, 19);
+			tmp[19] = 0;
+			replaceExpDesignator(tmp, 19);
+			ionoutc->A0 = atof(tmp);
+
+			strncpy(tmp, str+23, 14);
+			tmp[14] = 0;
+			replaceExpDesignator(tmp, 14);
+			ionoutc->A1 = atof(tmp);
+
+			strncpy(tmp, str+38, 7);
+			tmp[7] = 0;
+			ionoutc->tot = atoi(tmp);
+
+			strncpy(tmp, str+46, 7);
+			tmp[5] = 0;
+			ionoutc->wnt = atoi(tmp);
+
+			if (ionoutc->tot%4096==0)
+				flags |= 0x1<<2;
+		}
+		else if (strncmp(str+60, "LEAP SECONDS", 12)==0)
+		{
+			strncpy(tmp, str, 6);
+			tmp[6] = 0;
+			ionoutc->dtls = atoi(tmp);
+
+			flags |= 0x1<<3;
+		}
+	}
+
+	ionoutc->vflg = FALSE;
+	if (flags==0xF) // Read all Iono/UTC lines
+		ionoutc->vflg = TRUE;
+
+	// Read ephemeris blocks
+	g0.week = -1;
+	ieph = 0;
+
+	while (1)
+	{
+		if (NULL==fgets(str, MAX_CHAR, fp))
+			break;
+
+		strncpy(tmp, str, 1);
+		tmp[1] = 0;
+		// PRN
+		strncpy(tmp, str+1, 2);
+		tmp[2] = 0;
+		sv = 32+atoi(tmp)-1;
+		//printf("%d",sv);
+
+		// EPOCH
+		strncpy(tmp, str+4, 2);
+		tmp[2] = 0;
+		t.y = atoi(tmp) + 2000;
+
+		strncpy(tmp, str+7, 2);
+		tmp[2] = 0;
+		t.m = atoi(tmp);
+
+		strncpy(tmp, str+10, 2);
+		tmp[2] = 0;
+		t.d = atoi(tmp);
+
+		strncpy(tmp, str+13, 2);
+		tmp[2] = 0;
+		t.hh = atoi(tmp);
+
+		strncpy(tmp, str+16, 2);
+		tmp[2] = 0;
+		t.mm = atoi(tmp);
+
+		strncpy(tmp, str+19, 4);
+		tmp[2] = 0;
+		t.sec = atof(tmp);
+
+		date2gps(&t, &g);
+		
+		if (g0.week==-1)
+			g0 = g;
+
+		// Check current time of clock
+		dt = subGpsTime(g, g0);
+		
+		if (dt>SECONDS_IN_HOUR)
+		{
+			g0 = g;
+			ieph++; // a new set of ephemerides
+
+			if (ieph>=EPHEM_ARRAY_SIZE)
+				break;
+		}
+
+		// Date and time
+		eph[ieph][sv].t = t;
+
+		// SV CLK
+		eph[ieph][sv].toc = g;
+
+		strncpy(tmp, str+23, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19); // tmp[15]='E';
+		eph[ieph][sv].af0 = atof(tmp);
+
+		strncpy(tmp, str+42, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].af1 = atof(tmp);
+
+		strncpy(tmp, str+61, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].af2 = atof(tmp);
+
+		// BROADCAST ORBIT - 1
+		if (NULL==fgets(str, MAX_CHAR, fp))
+			break;
+
+		strncpy(tmp, str+4, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].iode = (int)atof(tmp);
+
+		strncpy(tmp, str+23, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].crs = atof(tmp);
+
+		strncpy(tmp, str+42, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].deltan = atof(tmp);
+
+		strncpy(tmp, str+61, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].m0 = atof(tmp);
+
+		// BROADCAST ORBIT - 2
+		if (NULL==fgets(str, MAX_CHAR, fp))
+			break;
+
+		strncpy(tmp, str+4, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].cuc = atof(tmp);
+
+		strncpy(tmp, str+23, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].ecc = atof(tmp);
+
+		strncpy(tmp, str+42, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].cus = atof(tmp);
+
+		strncpy(tmp, str+61, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].sqrta = atof(tmp);
+
+		// BROADCAST ORBIT - 3
+		if (NULL==fgets(str, MAX_CHAR, fp))
+			break;
+
+		strncpy(tmp, str+4, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].toe.sec = atof(tmp);
+
+		strncpy(tmp, str+23, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].cic = atof(tmp);
+
+		strncpy(tmp, str+42, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].omg0 = atof(tmp);
+
+		strncpy(tmp, str+61, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].cis = atof(tmp);
+
+		// BROADCAST ORBIT - 4
+		if (NULL==fgets(str, MAX_CHAR, fp))
+			break;
+
+		strncpy(tmp, str+4, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].inc0 = atof(tmp);
+
+		strncpy(tmp, str+23, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].crc = atof(tmp);
+		
+		strncpy(tmp, str+42, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].aop = atof(tmp);
+
+		strncpy(tmp, str+61, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].omgdot = atof(tmp);
+
+		// BROADCAST ORBIT - 5
+		if (NULL==fgets(str, MAX_CHAR, fp))
+			break;
+
+		strncpy(tmp, str+4, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].idot = atof(tmp);
+
+		strncpy(tmp, str+23, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].codeL2 = (int)atof(tmp);
+
+		strncpy(tmp, str+42, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].toe.week = (int)atof(tmp);
+
+		// BROADCAST ORBIT - 6
+		if (NULL==fgets(str, MAX_CHAR, fp))
+			break;
+
+		strncpy(tmp, str+23, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].svhlth = (int)atof(tmp);
+		if ((eph[ieph][sv].svhlth>0) && (eph[ieph][sv].svhlth<32))
+			eph[ieph][sv].svhlth += 32; // Set MSB to 1
+
+		strncpy(tmp, str+42, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].tgd = atof(tmp);
+
+		strncpy(tmp, str+61, 19);
+		tmp[19] = 0;
+		replaceExpDesignator(tmp, 19);
+		eph[ieph][sv].iodc = (int)atof(tmp);
+
+		// BROADCAST ORBIT - 7
+		if (NULL==fgets(str, MAX_CHAR, fp))
+			break;
+
+		// Set valid flag
+		eph[ieph][sv].vflg = 1;
+		//printf("%d:%d\n", sv, eph[ieph][sv].vflg);
+
+		// Update the working variables
+		eph[ieph][sv].A = eph[ieph][sv].sqrta * eph[ieph][sv].sqrta;
+		eph[ieph][sv].n = sqrt(GM_EARTH/(eph[ieph][sv].A*eph[ieph][sv].A*eph[ieph][sv].A)) + eph[ieph][sv].deltan;
+		eph[ieph][sv].sq1e2 = sqrt(1.0 - eph[ieph][sv].ecc*eph[ieph][sv].ecc);
+		eph[ieph][sv].omgkdot = eph[ieph][sv].omgdot - OMEGA_EARTH;
+	}
+
+	fclose(fp);
+	
+	if (g0.week>=0)
+		ieph += 1; // Number of sets of ephemeris
+
+	return(ieph);
+}
+
 double ionosphericDelay(const ionoutc_t *ionoutc, gpstime_t g, double *llh, double *azel)
 {
 	double iono_delay = 0.0;
@@ -1383,49 +1760,6 @@ int readUserMotion(double xyz[USER_MOTION_SIZE][3], const char *filename)
 	return (numd);
 }
 
-/*! \brief Read the list of user motions from the input file
- *  \param[out] xyz Output array of LatLonHei coordinates for user motion
- *  \param[[in] filename File name of the text input file with format Lat,Lon,Hei
- *  \returns Number of user data motion records read, -1 on error
- *
- * Added by romalvarezllorens@gmail.com
- */
-int readUserMotionLLH(double xyz[USER_MOTION_SIZE][3], const char *filename)
-{
-	FILE *fp;
-	int numd;
-	double t,llh[3];
-	char str[MAX_CHAR];
-
-	if (NULL==(fp=fopen(filename,"rt")))
-		return(-1);
-
-	for (numd=0; numd<USER_MOTION_SIZE; numd++)
-	{
-		if (fgets(str, MAX_CHAR, fp)==NULL)
-			break;
-
-		if (EOF==sscanf(str, "%lf,%lf,%lf,%lf", &t, &llh[0], &llh[1], &llh[2])) // Read CSV line
-			break;
-		
-		if (llh[0] > 90.0 || llh[0] < -90.0 || llh[1]>180.0 || llh[1] < -180.0)
-		{
-			fprintf(stderr, "ERROR: Invalid file format (time[s], latitude[deg], longitude[deg], height [m].\n");
-			numd = 0; // Empty user motion
-			break;
-		}
-
-		llh[0] /= R2D; // convert to RAD
-		llh[1] /= R2D; // convert to RAD
-
-		llh2xyz(llh, xyz[numd]);
-	}
-
-	fclose(fp);
-
-	return (numd);
-}
-
 int readNmeaGGA(double xyz[USER_MOTION_SIZE][3], const char *filename)
 {
 	FILE *fp;
@@ -1623,6 +1957,7 @@ int allocateChannel(channel_t *chan, ephem_t *eph, ionoutc_t ionoutc, gpstime_t 
 	double r_ref,r_xyz;
 	double phase_ini;
 
+
 	for (sv=0; sv<MAX_SAT; sv++)
 	{
 		if(checkSatVisibility(eph[sv], grx, xyz, 0.0, azel)==1)
@@ -1695,11 +2030,11 @@ void usage(void)
 	fprintf(stderr, "Usage: gps-sdr-sim [options]\n"
 		"Options:\n"
 		"  -e <gps_nav>     RINEX navigation file for GPS ephemerides (required)\n"
-		"  -u <user_motion> User motion file in ECEF x, y, z format (dynamic mode)\n"
-		"  -x <user_motion> User motion file in lat, lon, height format (dynamic mode)\n"
+		"  -q <qzss_nav>    RINEX navigation file for QZSS ephemerides (required)\n"
+		"  -u <user_motion> User motion file (dynamic mode)\n"
 		"  -g <nmea_gga>    NMEA GGA stream (dynamic mode)\n"
 		"  -c <location>    ECEF X,Y,Z in meters (static mode) e.g. 3967283.154,1022538.181,4872414.484\n"
-		"  -l <location>    Lat, lon, height (static mode) e.g. 35.681298,139.766247,10.0\n"
+		"  -l <location>    Lat,Lon,Hgt (static mode) e.g. 35.681298,139.766247,10.0\n"
 		"  -t <date,time>   Scenario start time YYYY/MM/DD,hh:mm:ss\n"
 		"  -T <date,time>   Overwrite TOC and TOE to scenario start time\n"
 		"  -d <duration>    Duration [sec] (dynamic mode max: %.0f, static mode max: %d)\n"
@@ -1746,9 +2081,9 @@ int main(int argc, char *argv[])
 
 	int staticLocationMode = FALSE;
 	int nmeaGGA = FALSE;
-	int umLLH = FALSE;
 
 	char navfile[MAX_CHAR];
+	char qzssfile[MAX_CHAR];
 	char outfile[MAX_CHAR];
 
 	double samp_freq;
@@ -1782,6 +2117,7 @@ int main(int argc, char *argv[])
 
 	// Default options
 	navfile[0] = 0;
+	qzssfile[0] = 0;
 	umfile[0] = 0;
 	strcpy(outfile, "gpssim.bin");
 	samp_freq = 2.6e6;
@@ -1798,22 +2134,19 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	while ((result=getopt(argc,argv,"e:u:x:g:c:l:o:s:b:T:t:d:iv"))!=-1)
+	while ((result=getopt(argc,argv,"e:q:u:g:c:l:o:s:b:T:t:d:iv"))!=-1)
 	{
 		switch (result)
 		{
 		case 'e':
 			strcpy(navfile, optarg);
 			break;
+		case 'q':
+			strcpy(qzssfile, optarg);
+			break;
 		case 'u':
 			strcpy(umfile, optarg);
 			nmeaGGA = FALSE;
-			umLLH = FALSE;
-			break;
-		case 'x':
-			// Added by romalvarezllorens@gmail.com
-			strcpy(umfile, optarg);
-			umLLH = TRUE;
 			break;
 		case 'g':
 			strcpy(umfile, optarg);
@@ -1870,9 +2203,8 @@ int main(int argc, char *argv[])
 				t0.sec = (double)gmt->tm_sec;
 
 				date2gps(&t0, &g0);
-				
-				break;
 			}
+			break;
 		case 't':
 			sscanf(optarg, "%d/%d/%d,%d:%d:%lf", &t0.y, &t0.m, &t0.d, &t0.hh, &t0.mm, &t0.sec);
 			if (t0.y<=1980 || t0.m<1 || t0.m>12 || t0.d<1 || t0.d>31 ||
@@ -1902,11 +2234,13 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	
 	if (navfile[0]==0)
 	{
 		fprintf(stderr, "ERROR: GPS ephemeris file is not specified.\n");
 		exit(1);
 	}
+	
 
 	if (umfile[0]==0 && !staticLocationMode)
 	{
@@ -1940,8 +2274,6 @@ int main(int argc, char *argv[])
 		// Read user motion file
 		if (nmeaGGA==TRUE)
 			numd = readNmeaGGA(xyz, umfile);
-		else if (umLLH == TRUE)
-			numd = readUserMotionLLH(xyz, umfile);
 		else
 			numd = readUserMotion(xyz, umfile);
 
@@ -1959,9 +2291,6 @@ int main(int argc, char *argv[])
 		// Set simulation duration
 		if (numd>iduration)
 			numd = iduration;
-
-		// Set user initial position
-		xyz2llh(xyz[0], llh);
 	} 
 	else 
 	{ 
@@ -1969,30 +2298,22 @@ int main(int argc, char *argv[])
 		// Added by scateu@gmail.com 
 		fprintf(stderr, "Using static location mode.\n");
 
-		// Set simulation duration
 		numd = iduration;
-
-		// Set user initial position
-		llh2xyz(llh, xyz[0]);
 	}
-
+/*
 	fprintf(stderr, "xyz = %11.1f, %11.1f, %11.1f\n", xyz[0][0], xyz[0][1], xyz[0][2]);
 	fprintf(stderr, "llh = %11.6f, %11.6f, %11.1f\n", llh[0]*R2D, llh[1]*R2D, llh[2]);
-
+*/
 	////////////////////////////////////////////////////////////
 	// Read ephemeris
 	////////////////////////////////////////////////////////////
 
-	neph = readRinexNavAll(eph, &ionoutc, navfile);
+	neph = readqzssRinexNavAll(eph, &ionoutc, qzssfile);
+	neph = readgpsRinexNavAll(eph, &ionoutc, navfile);
 
 	if (neph==0)
 	{
 		fprintf(stderr, "ERROR: No ephemeris available.\n");
-		exit(1);
-	}
-	else if (neph==-1)
-	{
-		fprintf(stderr, "ERROR: ephemeris file not found.\n");
 		exit(1);
 	}
 
@@ -2007,8 +2328,10 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%6d\n", ionoutc.dtls);
 	}
 
+
 	for (sv=0; sv<MAX_SAT; sv++) 
 	{
+
 		if (eph[0][sv].vflg==1)
 		{
 			gmin = eph[0][sv].toc;
@@ -2190,9 +2513,13 @@ int main(int argc, char *argv[])
 
 	for(i=0; i<MAX_CHAN; i++)
 	{
-		if (chan[i].prn>0)
+		if (chan[i].prn>0&&chan[i].prn<32){
 			fprintf(stderr, "%02d %6.1f %5.1f %11.1f %5.1f\n", chan[i].prn, 
 				chan[i].azel[0]*R2D, chan[i].azel[1]*R2D, chan[i].rho0.d, chan[i].rho0.iono_delay);
+		}else if(chan[i].prn>0&&chan[i].prn>32){
+			fprintf(stderr, "J%d %6.1f %5.1f %11.1f %5.1f\n", chan[i].prn-32, 
+				chan[i].azel[0]*R2D, chan[i].azel[1]*R2D, chan[i].rho0.d, chan[i].rho0.iono_delay);
+		}
 	}
 
 	////////////////////////////////////////////////////////////
