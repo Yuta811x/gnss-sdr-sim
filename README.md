@@ -1,4 +1,6 @@
-# GPS-SDR-SIM
+# GPS-QZSS-SDR-SIM
+
+in preparation
 
 GPS-SDR-SIM generates GPS baseband signal data streams, which can be converted 
 to RF using software-defined radio (SDR) platforms, such as 
