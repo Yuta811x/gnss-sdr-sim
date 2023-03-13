@@ -41,6 +41,8 @@ Options:
 
 https://cddis.nasa.gov/archive/gnss/data/daily/. 
 
+Differences in navigation data specifications make it impossible to read the data correctly.
+
 ### License
 
 Copyright &copy; 2015-2022 Takuji Ebinuma  
