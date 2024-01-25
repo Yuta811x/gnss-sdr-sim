@@ -1,4 +1,4 @@
-# GPS-QZSS-SDR-SIM
+# GNSS-SDR-SIM
 
 Extension to gps-sdr-sim to simulate QZSS satellite signals from QZSS navigation data.
 But we have not been able to extend the functionality perfectly.
