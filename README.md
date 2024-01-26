@@ -5,7 +5,7 @@ Please check gps-sdr-sim for basic specifications
 
 https://github.com/osqzss/gps-sdr-sim
 
-For ephemeris data, please get Ephemeris(Rinex Extension version) from the following site
+For GPS and QZSS ephemeris data, please get Ephemeris(Rinex Extension version) from the following site
 
 https://sys.qzss.go.jp/dod/archives/pnt.html
 
@@ -19,6 +19,8 @@ Options:
 
 ### Important Point
 QZSS and GPS navigation data must be from the same time. 
+
+gps-sdr-sim can use nasa's HP ephemeris data, but not this software
 
 ### License
 
